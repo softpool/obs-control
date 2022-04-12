@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>OBS Control </title>
+		
+		<!-- Theme jQuery -->
+		<script src="https://code.jquery.com/jquery-latest.js"></script>
+		
+		<!-- <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css"> -->
+		<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>	
+       	
+		<!-- Font Awesome icons (free version)-->
+		<script src="https://kit.fontawesome.com/54c2eaa504.js" crossorigin="anonymous"></script>
+		
+		<!-- Sweetalert einbinden -->
+		<script src="https://cdn.jsdelivr.net/npm/sweetalert2@9"></script>
+		
+		<!--
+		<script src="https://use.fontawesome.com/releases/v5.13.0/js/all.js" crossorigin="anonymous"></script>
+		-->
+		<script src="platform.js"></script>
+		
+		<style>
+		
+			body {
+				background-color: lightgray;
+				color:black;
+				font-family: Verdana;
+				margin: 0px;
+				padding: 0 20px 0 20px;
+			}
+		
+			.grid-container {
+				display: grid;
+				width: 97vw;
+				height: 100vh;
+				gap: 20px;
+				grid-template-columns: 1fr 1fr 1fr;
+				grid-template-rows: 40px 1fr 1fr 40px ;
+			}
+			
+			.header{
+				background-color: red;
+				color: white;				
+				grid-row-start: 1;
+				grid-column-start: 1;
+				grid-row-end: 2;
+				grid-column-end: 4;
+				text-align: center;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			
+			.footer {
+				background-color: yellow; 
+				color: black;
+				grid-row-start: 4;
+				grid-column-start: 1;
+				grid-row-end: 5;
+				grid-column-end: 4;
+				text-align: center;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			
+
+			.version {
+				po sition: absolute;
+				top: 0px;
+				left: 0px;
+				height: 10px;
+				weight: 100%
+				background-color: yellow;
+				font-size:12px;							
+				color:white;
+				z-index: 2;
+				text-align: center;
+			}
+
+			a:link, a:visited {
+			 text-decoration: none;
+			}
+			
+			a:hover {	
+				color: red;
+			}
+
+
+			.btn {
+				background-color: #474EDD;
+				background-image: -webkit-linear-gradient(283deg, rgba(255, 255, 255, 0.1) 50%, transparent 55%),-webkit-linear-gradient(top, rgba(255, 255, 255, 0.15), transparent);
+				box-shadow: 0 0 0 1px #163772 inset,0 0 0 2px rgba(255, 255, 255, 0.15) inset,0 4px 0 0      #333797,0 4px 0 1px rgba(0, 0, 0, 0.4),0 4px 4px 1px rgba(0, 0, 0, 0.5);
+				border-radius: 20px;
+				color: yellow;
+				font-family: "Lucida Grande", Arial, sans-serif;
+				font-size: 5vw;
+				font-weight: bold;
+				height: 100%;
+				width: 100%;
+				letter-spacing: -1px;
+				line-height: 61px;
+				position: relative;
+				text-align: center;
+				text-shadow: 0 2px 2px rgba(0, 0, 0, 0.5);
+				text-decoration: none;
+				-webkit-transition: all .2s linear;
+				/* Ergänzung */
+				
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				letter-spacing: 3px;
+				word-wrap: break-word;
+				
+				
+			 }
+
+			 .btn:active {
+				background-color: #474EDD;
+				top: 4px;
+				box-shadow: 0 0 0 1px #163772 inset,0 0 0 2px rgba(255, 255, 255, 0.15) inset,0 0 0 0   #333797,0 0 0 1px rgba(0, 0, 0, 0.4),0 0px 8px 1px rgba(0, 0, 0, 0.5);
+			 }
+			 
+			 .info {
+				height: 10px;
+				weight: 100%
+				background-color: yellow;
+				font-size:12px;							
+				color:white;
+			 }
+ 
+
+		</style>	
+    </head>
+    
+	<body onLoad="startTime()">
+		
+		<div class="grid-container" >
+			
+			<div class="header" id="header">DISCONNECTED</div>
+				
+		    <div class="btn"    id="btn_1">Szene<br>Intro</div>
+			<div class="btn"    id="btn_2">Szene<br>Video</div>
+			<div class="btn"    id="btn_3">Szene<br>Abspann</div>
+	
+		    <div class="btn"    id="btn_4">Start<br>Record</div>
+			<div class="btn"    id="btn_5" onClick="fullscreen()"></div>
+			<div class="btn"    id="btn_6">Clock</div>
+	
+			<div class="footer" id="footer"></div>
+			
+		
+		</div>
+
+		<script>
+			
+			console.warn('OBS Control Version 0.9');
+			
+			/* Szenentexte hier anpassen */
+			var BTN_1  = "Intro";
+			var BTN_2  = "Video";
+			var BTN_3  = "Abspann";
+			
+			$("#btn_1").html(BTN_1);
+			$("#btn_2").html(BTN_2);
+			$("#btn_3").html(BTN_3);
+			
+			var ws_port = "4444";
+			var ws_host = "localhost";	
+			
+			var color_btn          = "#0000DD";
+			var color_btn_enabled  = "#007700";
+			var color_btn_disabled = "#474EDD";
+			var color_btn_record   = "#AA0000";
+
+			// console.log(navigator);
+			// console.log(platform);
+			
+			let obshost = getUrlParameter("obshost");
+			if(obshost) ws_host = obshost; 
+			let ws_url  = "ws://" + ws_host + ":" + ws_port;
+			
+			let counter = 0;  // Zeitzaehler
+				
+			// https://entwickler.de/online/websocket-implementierung-mit-php-132012.html
+			let keypress = 0;
+			let recording = false;
+			
+			let info = 'OBS Host: '+ws_host+'<br>' + 
+						'OBS Port: '+ws_port+'<br><br>' + 
+						'Copyright &copy; by Banto@gmx.net';
+						
+			
+			
+			
+			$(document).ready(function() {
+				
+				console.log ("DOCUMENT READY");
+				
+				Swal.fire({
+				  icon: 'info',
+				  title: 'OBS Web-Control v1.0',
+				  html: info,
+				  showConfirmButton: false,
+				  timer: 3000
+				})
+
+				var elem = document.querySelector('body'), text = '';
+				elem.addEventListener("keydown", TasteGedrückt    );
+				elem.addEventListener("keyup",   TasteLosgelassen );
+
+				try {		
+					socket = new WebSocket(ws_url);
+					socket.onopen = function() 
+					{
+						console.log("Websocket open");
+						
+						// Button 1
+						$( "#btn_1" ).click(function() {
+							console.log("click btn_1");
+							socket.send('{"request-type":"SetCurrentScene", "scene-name":BTN_1, "message-id":"00"}');
+							socket.send('{"request-type":"StopRecording",                       "message-id":"00"}');
+							
+						});
+						
+						
+						
+						// Button 2
+						$( "#btn_2" ).click(function() {
+							console.log("click btn_2");
+							// ein bischen warten bis Szene Video ins Bild kommt
+							wait(10000,3000);
+							async function wait(sec1,sec2) {								
+								$("#btn3").html('wait...');
+								await sleep(sec1);
+								beep();								
+								await sleep(sec2);								
+								beep2();
+								await sleep(sec2);	
+								socket.send('{"request-type":"SetCurrentScene", "scene-name":BTN_2, "message-id":"00"}');
+								$("#btn3").html('Szene<br>Video');
+							};			
+						});
+						
+						// Button 3
+						$( "#btn_3" ).click(function() {
+							console.log("click btn_3");
+							socket.send('{"request-type":"SetCurrentScene", "scene-name":BTN_3, "message-id":"00"}');
+						});
+						
+						
+						// Button 4  Record
+						$( "#btn_4" ).click(function() {
+							console.log("click btn_4");
+							if(recording)
+								socket.send('{"request-type":"StartRecording", "message-id":"00"}');
+							else
+								socket.send('{"request-type":"StopRecording",  "message-id":"00"}');		
+						});
+						
+						
+						// Button 5 
+						$( "#btn_5" ).click(function() {
+							console.log("click btn_5");
+							//socket.send('{"request-type":"StopRecording", "message-id":"00"}');
+						});
+						
+						
+						// Button 6
+						$( "#btn_6" ).click(function() {
+							console.log("click btn_6");
+							document.getElementById('btn_6').innerHTML = 'Reset' ;
+							
+						});
+						
+						socket.send('{"request-type":"GetVersion", "message-id":"3"}');
+						
+						if(getUrlParameter("stati") == 'on') {
+							socket.send('{"request-type":"SetHeartbeat",  "enable":true,  "message-id":"4"}');  // CPU daten einschalten
+						}
+						else 
+							socket.send('{"request-type":"SetHeartbeat", "enable":false, "message-id":"4"}');  // CPU daten einschalten
+						
+						setInterval(function(){ 
+							
+							let batt = batteryStatus();
+							$("#btn_5").html('Fullscreen '+ batt );
+							
+							socket.send('{"request-type":"GetStreamingStatus", "message-id":"1"}');
+							socket.send('{"request-type":"GetCurrentScene",    "message-id":"2"}');	
+							
+							//console.log("keypress:"+keypress);
+							if (keypress != 0) {
+								
+								switch (keypress){
+								
+									case 1:		
+										socket.send('{"request-type":"SetCurrentScene", "scene-name":BTN_1,   "message-id":"00"}');
+										socket.send('{"request-type":"StopRecording", "message-id":"00"}');
+										break;
+										
+									case 2:
+										socket.send('{"request-type":"StartRecording", "message-id":"00"}');
+										break;
+							
+									case 3:
+										socket.send('{"request-type":"SetCurrentScene", "scene-name":BTN_2, "message-id":"00"}');
+										break;
+										
+									case 4:
+										socket.send('{"request-type":"SetCurrentScene", "scene-name":BTN_3, "message-id":"00"}');
+										break;
+										
+									case 5:
+										socket.send('{"request-type":"StopRecording", "message-id":"00"}');
+										break;
+								}
+								keypress=0;
+							};
+							
+						}, 1000);
+						
+	
+					};	
+					socket.onmessage = function(msg) {	
+						//console.log("Websocket new message!");
+						//console.log(msg.data);
+						const result = JSON.parse(msg.data);
+						datenauswerten(result);
+						
+						// Heartbeat Message auswerten
+						if(result["update-type"]=='Heartbeat'){
+							var heartbeat = msg.data;
+							heartbeat = heartbeat.replaceAll(',','<br>');
+							heartbeat = heartbeat.replaceAll('"',' ');
+							heartbeat = heartbeat.replaceAll('stats : {','');
+							heartbeat = heartbeat.replaceAll('{','');
+							heartbeat = heartbeat.replaceAll('}','');
+							$(".heartbeat").html(heartbeat);
+							
+							// Ausgelassene Frames durch Renderverzögerung in %
+							var rmf = result.stats["render-missed-frames"];
+							var rtf = result.stats["render-total-frames"];
+							var rmf_rtf = rmf/rtf;
+							armf = rmf+' / '+rtf+' ('+rmf_rtf.toFixed(3)+'%)';
+							var rmf_str = 'Ausgelassene Frames durch Renderverzögerung:<br><br>'+' '+armf;
+							
+							// Übersprungene Frames durch Kodierungsverzögerung in %
+							var osf = result.stats["output-skipped-frames"];
+							var otf = result.stats["output-total-frames"];
+							var osf_otf = osf/otf;
+							aosf = osf+' / '+otf+' ('+osf_otf.toFixed(3)+'%)';
+							var osf_str = 'Übersprungene Frames durch Kodierungsverzögerung:<br><br>'+' '+aosf;
+							
+							//console.log(osf_str, rmf_str);
+							$(".stati").html(osf_str+'<br><br><br>'+rmf_str);
+						};
+					};
+					socket.onclose = function(msg) {
+						console.log("Websocket close!");
+						location.reload();
+					};
+					socket.onerror = function(msg) {
+						console.error("Websocket error!");
+					};
+				}
+				catch(ex) {
+					console.error("ERROR Exception: "+ ex);
+				};
+
+				
+			});
+			
+			
+			//
+			//
+			//
+			function TasteGedrückt (evt) {
+				keypress = parseInt(evt.key);
+				//console.log("Taste:"+evt.key);			
+			}
+			
+		
+			//
+			//
+			//
+			function TasteLosgelassen(evt){
+			
+			}
+
+
+			//
+			//
+			//		
+			function datenauswerten(result) {	
+				
+				switch (result["message-id"]){
+				
+					case "1":			// GetStreamingStatus Recording
+						
+						var status = result.recording;
+						
+						if(status != null) {
+							
+							// Error ermitteln 
+							if(result.recording==false && recording==false) {
+								beep();
+							};
+							
+							if(result.recording==true) {
+								$("#btn_4").css("background-color",color_btn_record);
+								$("#btn_4").html("Stop<br>Record");
+								recording = false;
+							} else {
+								$("#btn_4").css("background-color",color_btn);
+								$("#btn_4").html("Record");
+								recording = true;
+							};
+						};						
+						break;
+					
+					case "2":	// GetCurrentScene Intro, Video und Abspann
+						if(result.name != 'Zu Farbe übergehen') {
+							
+							
+							$("#btn_1").css("background-color", color_btn_disabled );
+							$("#btn_2").css("background-color", color_btn_disabled  );
+							$("#btn_3").css("background-color", color_btn_disabled  );
+									
+							switch (result.name){
+								
+								case BTN_1:	
+									$("#btn_1").css("background-color", color_btn_enabled );
+									
+									break;
+								case BTN_2:
+									$("#btn_2").css("background-color", color_btn_enabled );
+									
+									break;
+								case BTN_3:
+									$("#btn_3").css("background-color", color_btn_enabled  );
+									break;									
+							};
+						};
+						break;
+						
+					case "3":  // GetVersion
+						$("#header").css("background-color", color_btn_enabled );
+						$("#header").html(" CONNECTED ");					
+						let info = 'OBS Studio: '+result["obs-studio-version"]+', OBS Websocket: '+result["obs-websocket-version"];					
+						$("#footer").html(info);
+						break;
+				}
+				
+			};
+			
+			
+			//
+			// sleep
+			// 
+			function sleep(milliseconds) {
+				return new Promise(resolve => setTimeout(resolve, milliseconds));
+			}
+			
+			
+			//
+			//
+			//            
+			function beep() {
+				//console.log("Beep");
+				beep2();
+				//beep1(999, 220, 300);	
+			}
+			
+			
+			
+			//
+			//
+			//
+			var audio = new AudioContext();			
+			function beep1(vol, freq, duration) {
+			  v = audio.createOscillator();
+			  u = audio.createGain();
+			  v.connect(u);
+			  v.frequency.value = freq;
+			  v.type="square";
+			  u.connect(audio.destination);
+			  u.gain.value = vol*0.01;
+			  v.start(audio.currentTime);
+			  v.stop(audio.currentTime+duration*0.001);
+			}
+			
+			
+			//
+			//
+			//
+			function beep2() { 
+				var audio = new Audio('https://media.geeksforgeeks.org/wp-content/uploads/20190531135120/beep.mp3'); 
+				//var audio = new Audio('http://192.168.1.10/susanneohneis.de/websocket/action.mp3'); 
+				audio.play(); 
+			};
+
+
+			//
+			//
+			//
+			function startTime() {
+				var today = new Date();
+				var h = today.getHours();
+				var m = today.getMinutes();
+				var s = today.getSeconds();
+				m = checkTime(m);
+				s = checkTime(s);
+				z = h + ":" + m + ":" + s;	
+				
+				counter = counter+1;
+				document.getElementById('btn_6').innerHTML = z ;
+				var t = setTimeout(startTime,1000);
+				
+				function checkTime(i) {
+				  if (i < 10) {i = "0" + i}; 
+				  return i;
+				}
+				
+			} 
+
+
+		
+			
+			//
+			//    getUrlParameter()
+			//
+			function getUrlParameter(par) {
+
+				var value='';
+				var UrlParameter = window.location.search;
+				if(UrlParameter != "") {
+					var i = UrlParameter.indexOf(par+"=");
+					if(i >= 0) {
+						i = i+par.length+1;
+						var k = UrlParameter.indexOf("&", i);
+						if(k < 0) {
+							k = UrlParameter.length;
+						}
+						value = UrlParameter.substring(i, k);
+						for(i=0; i<value.length; i++) {
+						
+							if(value.charAt(i) == '+') {
+							
+								value=value.substring(0, i)+" "+value.substring(i+1,value.length);
+							}
+						}
+						value=unescape(value);
+					}
+				}
+				//console.log(value);
+				
+				return value;
+			}
+			
+			
+			//
+			//  parseData()
+			//
+			function parseData(data) {				
+				try {
+					 var result = JSON.parse(data);
+					 return result;
+				} catch (e) {
+					alert (result);
+					if (e instanceof SyntaxError) {
+						printError(e, true);
+					} else {
+						printError(e, false);
+					}
+					alert2 ("Es ist ein interner Fehler aufgetreten.\nBitte Informieren Sie den Systemadministrator!");
+					return false;
+				}				
+			};
+			
+			//
+			//  fullscreen()
+			//
+			function fullscreen(){
+				elem = document.getElementsByTagName("body")[0];
+				
+				if (!document.fullscreenElement && !document.mozFullScreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement){
+					
+					if(elem.requestFullscreen){
+						elem.requestFullscreen();
+					} else if(elem.msRequestFullscreen){
+						elem.msRequestFullscreen();
+					} else if(elem.mozRequestFullScreen){
+						elem.mozRequestFullScreen();
+					} else if(elem.webkitRequestFullscreen){
+						elem.webkitRequestFullscreen(elem.ALLOW_KEYBOARD_INPUT);
+					}
+				} else {
+					
+					if(document.exitFullscreen){
+						document.exitFullscreen();
+					} else if(document.msExitFullscreen){
+						document.msExitFullscreen();
+					} else if(document.mozCancelFullScreen){
+						document.mozCancelFullScreen();
+					} else if(document.webkitExitFullscreen){
+						document.webkitExitFullscreen();
+					}
+				}
+			}
+
+
+			//
+			//  batteryStatus()
+			//
+			function batteryStatus() {
+				let result = '';
+				navigator.getBattery().then(function(battery) {
+					
+					let level    = battery.level;	
+					let levelpic = '???';
+					
+					if (level> 0.00 && level<= 0.20) levelpic = '<i class="fas fa-battery-empty"></i>';
+					if (level> 0.20 && level<= 0.40) levelpic = '<i class="fas fa-battery-quarter"></i>';		
+					if (level> 0.40 && level<= 0.60) levelpic = '<i class="fas fa-battery-half"></i>';					
+					if (level> 0.60 && level<= 0.80) levelpic = '<i class="fas fa-battery-three-quarters"></i>';					
+					if (level> 0.80 && level<= 1.00) levelpic = '<i class="fas fa-battery-full"></i>';		
+					level = level*100;
+					
+					let result  = levelpic;
+					//let result  = level.toString(); + '%' + levelpic;
+					console.log(result);
+									
+				});
+				return (result);	
+			}
+			
+			
+			
+			
+	</script>
+</body>
+</html>
